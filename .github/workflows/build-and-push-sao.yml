@@ -19,7 +19,6 @@ jobs:
         run: |
           echo "Depo içeriği inceleniyor..."
           
-          # Sadece Makefile varsa derle
           if [ -f "Makefile" ]; then
             echo "Makefile bulundu, derleniyor..."
             make -j$(nproc)
@@ -37,10 +36,8 @@ jobs:
 
           mkdir -p sao_build_dir
           
-          # .git ve gereksiz dosyaları hariç tutup bütün depoyu kopyala
           rsync -av --exclude='.git' --exclude='sao_build_dir' --exclude='*.sao' ./ sao_build_dir/
 
-          # sao.json meta veri dosyası oluştur
           echo "{
             \"name\": \"$REPO_NAME\",
             \"version\": \"$VERSION\",
@@ -49,8 +46,8 @@ jobs:
             \"build_date\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"
           }" > sao_build_dir/sao.json
 
-          # Arşivle ve .sao yap
-          tar -czf "$PACKAGE_NAME" -C sao_build_dir .
+          # .sao dosyasını doğrudan GÜVENLİ olması için bir üst dizine (../) kaydediyoruz!
+          tar -czf "../$PACKAGE_NAME" -C sao_build_dir .
           
           echo "PACKAGE_FILE=$PACKAGE_NAME" >> $GITHUB_ENV
 
@@ -61,11 +58,15 @@ jobs:
           git config --global user.name "saomimOS Bot"
           git config --global user.email "bot@saomimos.local"
 
+          # 'packages' dalına geç veya yoksa oluştur (orphan)
           git checkout packages || git checkout --orphan packages
-          
-          rm -rf *.sao
-          mv ../${{ env.PACKAGE_FILE }} ./ || mv ${{ env.PACKAGE_FILE }} ./
 
-          git add *.sao
+          # Eski dosyaları temizle
+          git rm -rf . || true
+
+          # Üst dizinde güvenle saklanan .sao dosyasını geri getir
+          mv ../${{ env.PACKAGE_FILE }} ./
+
+          git add .
           git commit -m "Auto-build .sao package for commit ${{ github.sha }}"
           git push origin packages --force
