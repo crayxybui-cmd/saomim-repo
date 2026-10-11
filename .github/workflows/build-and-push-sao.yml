@@ -46,7 +46,7 @@ jobs:
             \"build_date\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"
           }" > sao_build_dir/sao.json
 
-          # .sao dosyasını doğrudan GÜVENLİ olması için bir üst dizine (../) kaydediyoruz!
+          # .sao dosyasını güvenle üst dizine kaydet
           tar -czf "../$PACKAGE_NAME" -C sao_build_dir .
           
           echo "PACKAGE_FILE=$PACKAGE_NAME" >> $GITHUB_ENV
@@ -58,15 +58,18 @@ jobs:
           git config --global user.name "saomimOS Bot"
           git config --global user.email "bot@saomimos.local"
 
-          # 'packages' dalına geç veya yoksa oluştur (orphan)
+          # packages dalını al veya yoksa yeni oluştur
+          git fetch origin packages || true
           git checkout packages || git checkout --orphan packages
 
-          # Eski dosyaları temizle
+          # Dalın içindeki eski gereksiz dosyaları tamamen temizle
           git rm -rf . || true
+          rm -rf sao_build_dir
 
-          # Üst dizinde güvenle saklanan .sao dosyasını geri getir
+          # Üst dizindeki .sao paketini ana dizine taşı
           mv ../${{ env.PACKAGE_FILE }} ./
 
-          git add .
+          # Sadece .sao dosyasını git'e ekle
+          git add *.sao
           git commit -m "Auto-build .sao package for commit ${{ github.sha }}"
           git push origin packages --force
